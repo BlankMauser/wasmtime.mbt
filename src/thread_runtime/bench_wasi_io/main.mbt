@@ -173,7 +173,7 @@ fn ensure_dist_dir() -> Result[String, Error] {
   match @env.current_dir() {
     Some(root) => {
       let dist = join_path(root, "dist")
-      if not(@fs.path_exists(dist)) {
+      if !(@fs.path_exists(dist)) {
         @fs.create_dir(dist) catch {
           err => return Err(err)
         }

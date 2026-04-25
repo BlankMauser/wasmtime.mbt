@@ -247,7 +247,7 @@ pub fn thread_runtime_new(shared_pages : Int) -> Result[ThreadRuntime, Error] {
   }
   let err_ptr = @wasmtime.make_ptr_buffer()
   let handle = thread_runtime_new_native(Int::to_uint64(shared_pages), err_ptr)
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_new failed"))
   } else {
     Ok(ThreadRuntime::{ handle, })
@@ -281,7 +281,7 @@ pub fn thread_runtime_spawn_wat(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -308,7 +308,7 @@ pub fn thread_runtime_spawn_wasm(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wasm failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -328,7 +328,7 @@ pub fn thread_runtime_precompile_cwasm(
     wasm.length(),
     err_ptr,
   )
-  if not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_precompile_cwasm failed"))
   } else {
     Ok(bytes)
@@ -355,7 +355,7 @@ pub fn thread_runtime_spawn_cwasm(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_cwasm failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -387,7 +387,7 @@ pub fn thread_runtime_spawn_cwasm_repeat(
     repeat,
     err_ptr,
   )
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_cwasm_repeat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -419,7 +419,7 @@ pub fn thread_runtime_spawn_wasm_repeat(
     repeat,
     err_ptr,
   )
-  if handle == 0 || not(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wasm_repeat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })

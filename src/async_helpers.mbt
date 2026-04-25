@@ -55,8 +55,8 @@ pub fn func_call_async_result(
       if ptr_buffer_is_null(err_ptr) && ptr_buffer_is_null(trap_ptr) {
         Ok(future)
       } else {
-        let err_present = not(ptr_buffer_is_null(err_ptr))
-        let trap_present = not(ptr_buffer_is_null(trap_ptr))
+        let err_present = !(ptr_buffer_is_null(err_ptr))
+        let trap_present = !(ptr_buffer_is_null(trap_ptr))
         Err(
           @builtin.Failure::Failure(
             "func_call_async failed (error=\{err_present}, trap=\{trap_present})",

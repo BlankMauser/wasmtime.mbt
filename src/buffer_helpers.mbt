@@ -25,7 +25,7 @@ pub fn ptr_buffer_clear(ptr_buf : Bytes) -> Unit {
 ///|
 /// Delete a Wasmtime error pointer stored in bytes if not null.
 pub fn error_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
-  if not(ptr_is_null(ptr_buf)) {
+  if !(ptr_is_null(ptr_buf)) {
     error_delete_ptr(ptr_buf)
   }
 }
@@ -33,7 +33,7 @@ pub fn error_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
 ///|
 /// Delete a trap pointer stored in bytes if not null.
 pub fn trap_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
-  if not(ptr_is_null(ptr_buf)) {
+  if !(ptr_is_null(ptr_buf)) {
     trap_delete_ptr(ptr_buf)
   }
 }
