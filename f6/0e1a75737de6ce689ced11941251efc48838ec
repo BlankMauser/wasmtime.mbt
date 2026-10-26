@@ -1,0 +1,16 @@
+src/thread_runtime/bench_wasi_io/main.mbt
+  h_03360edcd9e88f 33
+src/thread_runtime/bench_wasi_io/moon.pkg
+  h_03360edcd9e88f 2,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f60e1a75737de6ce689ced11941251efc48838ec",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}
