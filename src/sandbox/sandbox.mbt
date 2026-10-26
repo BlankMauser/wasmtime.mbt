@@ -1,6 +1,15 @@
 // Synchronous sandbox over the official Wasmtime C API: run untrusted Wasm
-// that imports nothing, under fuel, a wall-clock deadline and store limits,
-// and get i32 results and bytes back. See sandbox_stub.c.
+// that imports nothing, under fuel, a deadline and store limits, and get
+// i32 results and bytes back. See sandbox_stub.c.
+//
+// Compilation is not bounded by fuel or the deadline (Cranelift runs first;
+// 600k tiny functions took 27 s and 3.5 GB), so `Module::compile` scans the
+// module's sections and refuses it beyond `CompileLimits` before Wasmtime
+// sees it; compile once, instantiate as often as needed.
+
+///|
+#external
+priv type RawModule
 
 ///|
 #external
@@ -8,13 +17,23 @@ priv type Raw
 
 ///|
 #borrow(wasm, msg)
+extern "C" fn lf_module_new(wasm : Bytes, len : Int, msg : FixedArray[Byte], cap : Int) -> RawModule = "lf_module_new"
+
+///|
+extern "C" fn lf_module_is_null(m : RawModule) -> Int = "lf_module_is_null"
+
+///|
+extern "C" fn lf_module_free(m : RawModule) -> Unit = "lf_module_free"
+
+///|
+#borrow(status, msg)
 extern "C" fn lf_sandbox_new(
-  wasm : Bytes,
-  len : Int,
+  module_ : RawModule,
   memory_bytes : Int64,
   table_elements : Int64,
   fuel : Int64,
   timeout_ms : Int64,
+  status : FixedArray[Int],
   msg : FixedArray[Byte],
   cap : Int,
 ) -> Raw = "lf_sandbox_new"
@@ -67,12 +86,31 @@ pub(all) suberror SandboxError {
 } derive(Debug)
 
 ///|
+/// Bounds checked before compiling (compilation itself is not bounded).
+pub(all) struct CompileLimits {
+  module_bytes : Int
+  /// Imported plus defined functions.
+  functions : Int
+  /// The code section.
+  code_bytes : Int
+}
+
+///|
+pub let default_compile_limits : CompileLimits = {
+  module_bytes: 4 * 1024 * 1024,
+  functions: 10_000,
+  code_bytes: 1024 * 1024,
+}
+
+///|
 pub(all) struct Limits {
   memory_bytes : Int64
   table_elements : Int64
-  /// Fuel (roughly instructions) per session.
+  /// Fuel (roughly instructions) per session. Bulk operations cost almost
+  /// nothing (a 64 MB memory.fill is ~12 fuel): `timeout_ms` bounds work.
   fuel : Int64
-  /// Wall-clock milliseconds per session (epoch ticks every 1 ms).
+  /// Milliseconds of guest running time per session (an epoch ticks every
+  /// 1 ms while a guest runs).
   timeout_ms : Int64
 }
 
@@ -85,13 +123,6 @@ pub let default_limits : Limits = {
 }
 
 ///|
-struct Sandbox {
-  raw : Raw
-  limits : Limits
-  mut freed : Bool
-}
-
-///|
 fn message(buf : FixedArray[Byte]) -> String {
   let mut n = 0
   while n < buf.length() && buf[n] != b'\x00' {
@@ -101,58 +132,197 @@ fn message(buf : FixedArray[Byte]) -> String {
 }
 
 ///|
+/// Section sizes and counts read before compiling. Raises on anything that
+/// is not a well-formed section list (Wasmtime would refuse it anyway).
+priv struct Scan {
+  mut functions : Int
+  mut code_bytes : Int
+}
+
+///|
+fn leb_u32(b : Bytes, pos : Int) -> (Int, Int) raise SandboxError {
+  let mut result = 0L
+  let mut shift = 0
+  let mut p = pos
+  while true {
+    if p >= b.length() || shift > 28 {
+      raise Failed("malformed module: bad LEB128 at \{pos}")
+    }
+    let byte = b[p].to_int()
+    result = result | ((byte & 0x7f).to_int64() << shift)
+    p += 1
+    if (byte & 0x80) == 0 {
+      break
+    }
+    shift += 7
+  }
+  if result > 0xffffffffL || result > 0x7fffffffL {
+    raise Failed("malformed module: count too large at \{pos}")
+  }
+  (result.to_int(), p)
+}
+
+///|
+fn scan(b : Bytes) -> Scan raise SandboxError {
+  if b.length() < 8 || b[0] != b'\x00' || b[1] != b'a' || b[2] != b's' || b[3] != b'm' {
+    raise Failed("not a Wasm module")
+  }
+  let s : Scan = { functions: 0, code_bytes: 0 }
+  let mut p = 8
+  while p < b.length() {
+    let id = b[p].to_int()
+    let (size, body) = leb_u32(b, p + 1)
+    if body + size > b.length() {
+      raise Failed("malformed module: section \{id} runs past the end")
+    }
+    match id {
+      // Imports: count imported functions (kind 0). Entries are
+      // module name, field name, kind, then a kind-specific descriptor; a
+      // guest may import nothing anyway, so only the function count matters
+      // and malformed entries are left to Wasmtime.
+      2 => {
+        let (n, q) = leb_u32(b, body)
+        let mut q = q
+        for _ in 0..<n {
+          let (ml, q1) = leb_u32(b, q)
+          let (fl, q2) = leb_u32(b, q1 + ml)
+          let kind_at = q2 + fl
+          if kind_at >= body + size {
+            break
+          }
+          if b[kind_at] == b'\x00' {
+            s.functions += 1
+          }
+          // Skip the descriptor conservatively: the remaining imports only
+          // add to the count, and any import fails instantiation.
+          q = body + size
+        }
+        ignore(q)
+      }
+      3 => {
+        let (n, _) = leb_u32(b, body)
+        s.functions += n
+      }
+      10 => s.code_bytes += size
+      _ => ()
+    }
+    p = body + size
+  }
+  s
+}
+
+///|
+/// A compiled module, reusable for any number of instances.
+struct Module {
+  raw : RawModule
+  mut freed : Bool
+}
+
+///|
+/// Checks `wasm` against `limits`, then compiles it (outside fuel and the
+/// deadline: the limits are what bound compilation).
+pub fn Module::compile(
+  wasm : Bytes,
+  limits? : CompileLimits = default_compile_limits,
+) -> Module raise SandboxError {
+  if wasm.length() > limits.module_bytes {
+    raise Failed("module is \{wasm.length()} bytes; the limit is \{limits.module_bytes}")
+  }
+  let s = scan(wasm)
+  if s.functions > limits.functions {
+    raise Failed("module has \{s.functions} functions; the limit is \{limits.functions}")
+  }
+  if s.code_bytes > limits.code_bytes {
+    raise Failed("module has \{s.code_bytes} bytes of code; the limit is \{limits.code_bytes}")
+  }
+  let msg = FixedArray::make(512, b'\x00')
+  let raw = lf_module_new(wasm, wasm.length(), msg, msg.length())
+  if lf_module_is_null(raw) != 0 {
+    raise Failed(message(msg))
+  }
+  { raw, freed: false }
+}
+
+///|
+pub fn Module::free(self : Module) -> Unit {
+  if !self.freed {
+    self.freed = true
+    lf_module_free(self.raw)
+  }
+}
+
+///|
+struct Sandbox {
+  raw : Raw
+  limits : Limits
+  mut freed : Bool
+}
+
+///|
 fn status(code : Int, name : String, msg : FixedArray[Byte]) -> Unit raise SandboxError {
   match code {
     0 => ()
     1 => raise Trap(message(msg))
     2 => raise OutOfFuel
     3 => raise TimedOut
-    5 => raise Failed("`\{name}` did not return one i32")
+    5 => raise Failed("does not return one i32")
     6 => raise NoExport(name)
     _ => raise Failed(message(msg))
   }
 }
 
 ///|
-/// Compiles and instantiates `wasm`; instantiation runs in the first
-/// session (the module's start function, if any, spends its fuel).
-pub fn Sandbox::new(wasm : Bytes, limits? : Limits = default_limits) -> Sandbox raise SandboxError {
+/// Instantiates a compiled module; instantiation runs in the first session
+/// (a start function spends its fuel and deadline).
+pub fn Sandbox::new(module_ : Module, limits? : Limits = default_limits) -> Sandbox raise SandboxError {
+  if module_.freed {
+    raise Failed("module was freed")
+  }
   let msg = FixedArray::make(512, b'\x00')
+  let st = FixedArray::make(1, 4)
   let raw = lf_sandbox_new(
-    wasm,
-    wasm.length(),
+    module_.raw,
     limits.memory_bytes,
     limits.table_elements,
     limits.fuel,
     limits.timeout_ms,
+    st,
     msg,
     msg.length(),
   )
   if lf_sandbox_is_null(raw) != 0 {
+    status(st[0], "start", msg)
     raise Failed(message(msg))
   }
   { raw, limits, freed: false }
 }
 
 ///|
+fn Sandbox::alive(self : Sandbox) -> Unit raise SandboxError {
+  if self.freed {
+    raise Failed("sandbox was freed")
+  }
+}
+
+///|
 /// Starts a session: the limits' fuel and deadline, shared by every call
 /// until the next session.
-pub fn Sandbox::session(self : Sandbox) -> Unit {
+pub fn Sandbox::session(self : Sandbox) -> Unit raise SandboxError {
+  self.alive()
   lf_sandbox_session(self.raw, self.limits.fuel, self.limits.timeout_ms)
 }
 
 ///|
 /// Fuel left in the session.
-pub fn Sandbox::fuel_left(self : Sandbox) -> Int64 {
+pub fn Sandbox::fuel_left(self : Sandbox) -> Int64 raise SandboxError {
+  self.alive()
   lf_sandbox_fuel(self.raw)
 }
 
 ///|
 /// Calls export `name` with i32 arguments; it must return one i32.
 pub fn Sandbox::call(self : Sandbox, name : String, args : Array[Int]) -> Int raise SandboxError {
-  if self.freed {
-    raise Failed("sandbox was freed")
-  }
+  self.alive()
   if args.length() > 8 {
     raise Failed("at most 8 arguments")
   }
@@ -167,8 +337,9 @@ pub fn Sandbox::call(self : Sandbox, name : String, args : Array[Int]) -> Int ra
 ///|
 /// `len` bytes at `offset` of exported memory `memory` (bounds-checked).
 pub fn Sandbox::read(self : Sandbox, memory : String, offset : Int, len : Int) -> Bytes raise SandboxError {
-  if self.freed {
-    raise Failed("sandbox was freed")
+  self.alive()
+  if offset < 0 || len < 0 || len > self.limits.memory_bytes.to_int() {
+    raise Failed("read of \{len} bytes at \{offset} is out of bounds")
   }
   let out = FixedArray::make(len, b'\x00')
   let n = @utf8.encode(memory)

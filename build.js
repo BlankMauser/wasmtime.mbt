@@ -11,7 +11,10 @@ const capi = path.join(root, 'deps', 'wasmtime-c-api');
 // collides with any other Rust staticlib in the same binary (wgpu-native:
 // duplicate `rust_eh_personality`).
 const libDir = path.join(capi, 'lib');
-const linkFlags = `${path.join(libDir, 'libwasmtime.so')} -Wl,-rpath,${libDir} -lpthread -ldl -lm`;
+// -L/-l (not the .so path): libwasmtime.so has no SONAME, so linking it by
+// path records the absolute path and ignores the rpath. Binaries shipped
+// elsewhere need an $ORIGIN-relative rpath and the library beside them.
+const linkFlags = `-L${libDir} -lwasmtime -Wl,-rpath,${libDir} -lpthread -ldl -lm`;
 console.log(JSON.stringify({
   vars: { WASMTIME_C_API_INCLUDE: path.join(capi, 'include') },
   link_configs: [
