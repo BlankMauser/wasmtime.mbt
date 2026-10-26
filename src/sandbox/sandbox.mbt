@@ -93,6 +93,11 @@ pub(all) struct CompileLimits {
   functions : Int
   /// The code section.
   code_bytes : Int
+  /// Declared locals in one function. Cranelift zero-initialises each one:
+  /// 10k functions x 50,000 locals is 100 KB of module and ~20 s to compile.
+  locals_per_function : Int
+  /// Declared locals in all functions.
+  locals : Int
 }
 
 ///|
@@ -100,6 +105,8 @@ pub let default_compile_limits : CompileLimits = {
   module_bytes: 4 * 1024 * 1024,
   functions: 10_000,
   code_bytes: 1024 * 1024,
+  locals_per_function: 1000,
+  locals: 200_000,
 }
 
 ///|
@@ -137,6 +144,10 @@ fn message(buf : FixedArray[Byte]) -> String {
 priv struct Scan {
   mut functions : Int
   mut code_bytes : Int
+  /// The largest local count of one function, and the sum (Int64: each
+  /// declaration may claim up to 2^31 locals).
+  mut max_locals : Int64
+  mut locals : Int64
 }
 
 ///|
@@ -167,7 +178,7 @@ fn scan(b : Bytes) -> Scan raise SandboxError {
   if b.length() < 8 || b[0] != b'\x00' || b[1] != b'a' || b[2] != b's' || b[3] != b'm' {
     raise Failed("not a Wasm module")
   }
-  let s : Scan = { functions: 0, code_bytes: 0 }
+  let s : Scan = { functions: 0, code_bytes: 0, max_locals: 0L, locals: 0L }
   let mut p = 8
   while p < b.length() {
     let id = b[p].to_int()
@@ -203,7 +214,34 @@ fn scan(b : Bytes) -> Scan raise SandboxError {
         let (n, _) = leb_u32(b, body)
         s.functions += n
       }
-      10 => s.code_bytes += size
+      // Code: each body is size, then local declarations (count x (n, type)).
+      10 => {
+        s.code_bytes += size
+        let (n, q) = leb_u32(b, body)
+        let mut q = q
+        for _ in 0..<n {
+          let (fsize, fbody) = leb_u32(b, q)
+          if fbody + fsize > body + size {
+            raise Failed("malformed module: function body runs past the code section")
+          }
+          let (decls, d) = leb_u32(b, fbody)
+          let mut d = d
+          let mut count = 0L
+          for _ in 0..<decls {
+            let (k, t) = leb_u32(b, d)
+            count += k.to_int64()
+            d = t + 1 // the value type byte
+            if d > fbody + fsize {
+              raise Failed("malformed module: local declarations run past the body")
+            }
+          }
+          if count > s.max_locals {
+            s.max_locals = count
+          }
+          s.locals += count
+          q = fbody + fsize
+        }
+      }
       _ => ()
     }
     p = body + size
@@ -234,6 +272,12 @@ pub fn Module::compile(
   }
   if s.code_bytes > limits.code_bytes {
     raise Failed("module has \{s.code_bytes} bytes of code; the limit is \{limits.code_bytes}")
+  }
+  if s.max_locals > limits.locals_per_function.to_int64() {
+    raise Failed("a function declares \{s.max_locals} locals; the limit is \{limits.locals_per_function}")
+  }
+  if s.locals > limits.locals.to_int64() {
+    raise Failed("functions declare \{s.locals} locals in all; the limit is \{limits.locals}")
   }
   let msg = FixedArray::make(512, b'\x00')
   let raw = lf_module_new(wasm, wasm.length(), msg, msg.length())

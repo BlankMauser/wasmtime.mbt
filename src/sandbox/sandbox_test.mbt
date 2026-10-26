@@ -40,3 +40,58 @@ test "modules beyond the compile limits are refused before compiling" {
   }
   assert_eq(m, "sandbox was freed")
 }
+
+///|
+/// `n` functions each declaring `locals` i32 locals.
+fn with_locals(n : Int, locals : Int) -> Bytes {
+  let leb = fn(v : Int) -> Array[Byte] {
+    let out : Array[Byte] = []
+    let mut v = v
+    while true {
+      let b = v & 0x7f
+      v = v >> 7
+      if v == 0 {
+        out.push(b.to_byte())
+        break
+      }
+      out.push((b | 0x80).to_byte())
+    }
+    out
+  }
+  let b : Array[Byte] = [b'\x00', b'a', b's', b'm', b'\x01', b'\x00', b'\x00', b'\x00']
+  b.append([b'\x01', b'\x04', b'\x01', b'\x60', b'\x00', b'\x00'])
+  let funcs = leb(n)
+  for _ in 0..<n {
+    funcs.push(b'\x00')
+  }
+  b.push(b'\x03')
+  b.append(leb(funcs.length()))
+  b.append(funcs)
+  let entry : Array[Byte] = [b'\x01'] + leb(locals) + [b'\x7f', b'\x0b']
+  let code = leb(n)
+  for _ in 0..<n {
+    code.append(leb(entry.length()))
+    code.append(entry)
+  }
+  b.push(b'\x0a')
+  b.append(leb(code.length()))
+  b.append(code)
+  Bytes::from_array(b)
+}
+
+///|
+test "declared locals are capped before compiling" {
+  let err = fn(w : Bytes) {
+    try {
+      @sandbox.Module::compile(w).free()
+      "compiled"
+    } catch {
+      Failed(m) => m
+      _ => "other"
+    }
+  }
+  // 10k x 50,000 locals: ~20 s of Cranelift before the cap.
+  assert_true(err(with_locals(10_000, 50_000)).contains("declares 50000 locals; the limit is 1000"))
+  assert_true(err(with_locals(1000, 1000)).contains("1000000 locals in all; the limit is 200000"))
+  assert_eq(err(with_locals(100, 200)), "compiled")
+}
