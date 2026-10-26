@@ -6,19 +6,7 @@ supported_targets = "native"
 
 options(
   "native-stub": [ "sandbox_stub.c" ],
-  "pre-build": [
-    {
-      "command": "sh $input && touch $output",
-      "input": "../../scripts/fetch-wasmtime-c-api.sh",
-      "output": "wasmtime_c_api.stamp",
-    },
-  ],
-  link: {
-    "native": {
-      "stub-cc-flags": "-Ideps/wasmtime-c-api/include",
-      "cc-link-flags": "deps/wasmtime-c-api/lib/libwasmtime.a -lpthread -ldl -lm",
-    },
-  },
+  link: { "native": { "stub-cc-flags": "-I${build.WASMTIME_C_API_INCLUDE}" } },
 )
 import {
   "mizchi/wasmtime/sandbox" @sandbox,

@@ -22,5 +22,6 @@ source = "src"
 preferred_target = "native"
 
 options(
-  exclude: [ "deps/wasmtime/**" ],
+  exclude: [ "deps/wasmtime/**", "deps/wasmtime-c-api/**" ],
+  "--moonbit-unstable-prebuild": "build.js",
 )

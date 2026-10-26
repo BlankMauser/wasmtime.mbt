@@ -6,16 +6,6 @@ import {
 supported_targets = "native"
 
 options(
-  link: {
-    "native": { "cc-link-flags": "deps/wasmtime-c-api/lib/libwasmtime.a -lpthread -ldl -lm" },
-  },
   "native-stub": [ "wasmtime_stub.c" ],
-  "pre-build": [
-    {
-      "command": "sh $input && mkdir -p build-stamps && touch $output",
-      "input": "../scripts/fetch-wasmtime-c-api.sh",
-      "output": "build-stamps/wasmtime_build.stamp",
-    },
-  ],
   targets: { "ffi_native.mbt": [ "native" ] },
 )
