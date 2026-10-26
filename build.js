@@ -7,8 +7,11 @@ const path = require('node:path');
 const root = __dirname;
 execFileSync('sh', [path.join(root, 'scripts', 'fetch-wasmtime-c-api.sh')], { stdio: ['ignore', 'ignore', 'inherit'] });
 const capi = path.join(root, 'deps', 'wasmtime-c-api');
-const lib = path.join(capi, 'lib', 'libwasmtime.a');
-const linkFlags = `${lib} -lpthread -ldl -lm`;
+// Shared, not static: a static libwasmtime.a brings its own Rust std, which
+// collides with any other Rust staticlib in the same binary (wgpu-native:
+// duplicate `rust_eh_personality`).
+const libDir = path.join(capi, 'lib');
+const linkFlags = `${path.join(libDir, 'libwasmtime.so')} -Wl,-rpath,${libDir} -lpthread -ldl -lm`;
 console.log(JSON.stringify({
   vars: { WASMTIME_C_API_INCLUDE: path.join(capi, 'include') },
   link_configs: [
