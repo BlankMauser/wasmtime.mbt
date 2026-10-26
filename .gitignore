@@ -7,3 +7,4 @@ dist/
 .mooncakes/
 .moonagent/
 .jj/
+deps/wasmtime-c-api/

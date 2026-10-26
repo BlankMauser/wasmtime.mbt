@@ -1,20 +1,21 @@
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
-  "moonbitlang/core/builtin" @builtin,
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/builtin",
 }
+
+supported_targets = "native"
 
 options(
   link: {
-    "native": { "cc-link-flags": "-Ldeps/wasmtime/target/release -lwasmtime" },
+    "native": { "cc-link-flags": "deps/wasmtime-c-api/lib/libwasmtime.a -lpthread -ldl -lm" },
   },
   "native-stub": [ "wasmtime_stub.c" ],
   "pre-build": [
     {
-      "command": "bash $input $output",
-      "input": "scripts/build-wasmtime.sh",
+      "command": "sh $input && mkdir -p build-stamps && touch $output",
+      "input": "../scripts/fetch-wasmtime-c-api.sh",
       "output": "build-stamps/wasmtime_build.stamp",
     },
   ],
-  "supported-targets": [ "native" ],
   targets: { "ffi_native.mbt": [ "native" ] },
 )
