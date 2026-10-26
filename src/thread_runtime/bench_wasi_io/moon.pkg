@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/string",
   "mizchi/wasmtime",
   "mizchi/wasmtime/thread_runtime",
   "moonbitlang/core/builtin",
@@ -9,7 +10,7 @@ import {
 
 pkgtype(kind: "executable")
 
-supported_targets = [ "native" ]
+supported_targets = "native"
 
 options(
   link: {

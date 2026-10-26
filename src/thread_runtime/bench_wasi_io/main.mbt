@@ -30,7 +30,7 @@ fn print_help() -> Unit {
 
 ///|
 fn parse_int_or(value : String, fallback : Int32) -> Int32 {
-  @strconv.parse_int(value) catch {
+  @string.parse_int(value) catch {
     _ => fallback
   }
 }
