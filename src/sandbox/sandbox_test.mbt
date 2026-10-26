@@ -95,3 +95,49 @@ test "declared locals are capped before compiling" {
   assert_true(err(with_locals(1000, 1000)).contains("1000000 locals in all; the limit is 200000"))
   assert_eq(err(with_locals(100, 200)), "compiled")
 }
+
+///|
+test "a local type the scan cannot size is refused, not miscounted" {
+  // (func (local (ref null func)) (local i64 x 49990)): the two-byte type
+  // used to shift the scan onto 0x70 and hide the 49,990.
+  let b : Array[Byte] = [b'\x00', b'a', b's', b'm', b'\x01', b'\x00', b'\x00', b'\x00']
+  b.append([b'\x01', b'\x04', b'\x01', b'\x60', b'\x00', b'\x00'])
+  b.append([b'\x03', b'\x02', b'\x01', b'\x00'])
+  let body : Array[Byte] = [b'\x02', b'\x01', b'\x63', b'\x70', b'\xc6', b'\x86', b'\x03', b'\x7e', b'\x0b']
+  b.append([b'\x0a', (body.length() + 2).to_byte(), b'\x01', body.length().to_byte()])
+  b.append(body)
+  let m = try {
+    @sandbox.Module::compile(Bytes::from_array(b)).free()
+    "compiled"
+  } catch {
+    Failed(m) => m
+    _ => "other"
+  }
+  assert_true(m.contains("unsupported local type"), msg=m)
+}
+
+///|
+test "parameters count as locals" {
+  // One type with 1000 i64 params; one function of it declaring 1 local.
+  let b : Array[Byte] = [b'\x00', b'a', b's', b'm', b'\x01', b'\x00', b'\x00', b'\x00']
+  let ty : Array[Byte] = [b'\x01', b'\x60', b'\xe8', b'\x07']
+  for _ in 0..<1000 {
+    ty.push(b'\x7e')
+  }
+  ty.push(b'\x00')
+  b.push(b'\x01')
+  b.append([((ty.length() & 0x7f) | 0x80).to_byte(), (ty.length() >> 7).to_byte()])
+  b.append(ty)
+  b.append([b'\x03', b'\x02', b'\x01', b'\x00'])
+  let body : Array[Byte] = [b'\x01', b'\x01', b'\x7f', b'\x0b']
+  b.append([b'\x0a', (body.length() + 2).to_byte(), b'\x01', body.length().to_byte()])
+  b.append(body)
+  let m = try {
+    @sandbox.Module::compile(Bytes::from_array(b)).free()
+    "compiled"
+  } catch {
+    Failed(m) => m
+    _ => "other"
+  }
+  assert_true(m.contains("declares 1001 locals"), msg=m)
+}

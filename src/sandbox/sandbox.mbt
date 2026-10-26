@@ -93,8 +93,9 @@ pub(all) struct CompileLimits {
   functions : Int
   /// The code section.
   code_bytes : Int
-  /// Declared locals in one function. Cranelift zero-initialises each one:
-  /// 10k functions x 50,000 locals is 100 KB of module and ~20 s to compile.
+  /// Parameters plus declared locals in one function. Cranelift
+  /// zero-initialises each local: 10k functions x 50,000 locals is 100 KB
+  /// of module and ~20 s to compile.
   locals_per_function : Int
   /// Declared locals in all functions.
   locals : Int
@@ -148,6 +149,8 @@ priv struct Scan {
   /// declaration may claim up to 2^31 locals).
   mut max_locals : Int64
   mut locals : Int64
+  /// Function bodies scanned so far (their index into the function section).
+  mut locals_seen : Int
 }
 
 ///|
@@ -174,11 +177,24 @@ fn leb_u32(b : Bytes, pos : Int) -> (Int, Int) raise SandboxError {
 }
 
 ///|
+/// The one-byte value types (i32 i64 f32 f64 v128 funcref externref). The
+/// scan refuses anything longer (`(ref null func)` is 0x63 0x70): reading it
+/// as one byte would shift the scan and undercount locals, and our guests
+/// never use typed references.
+fn simple_type(t : Byte) -> Bool {
+  t == b'\x7f' || t == b'\x7e' || t == b'\x7d' || t == b'\x7c' || t == b'\x7b' || t == b'\x70' || t == b'\x6f'
+}
+
+///|
 fn scan(b : Bytes) -> Scan raise SandboxError {
   if b.length() < 8 || b[0] != b'\x00' || b[1] != b'a' || b[2] != b's' || b[3] != b'm' {
     raise Failed("not a Wasm module")
   }
-  let s : Scan = { functions: 0, code_bytes: 0, max_locals: 0L, locals: 0L }
+  let s : Scan = { functions: 0, code_bytes: 0, max_locals: 0L, locals: 0L, locals_seen: 0 }
+  // Parameters per type, and the type of each defined function: parameters
+  // are locals too (wasmparser allows 1000 per type).
+  let params : Array[Int] = []
+  let func_params : Array[Int] = []
   let mut p = 8
   while p < b.length() {
     let id = b[p].to_int()
@@ -210,9 +226,38 @@ fn scan(b : Bytes) -> Scan raise SandboxError {
         }
         ignore(q)
       }
+      1 => {
+        let (n, q) = leb_u32(b, body)
+        let mut q = q
+        for _ in 0..<n {
+          if q >= body + size || b[q] != b'\x60' {
+            raise Failed("unsupported type at \{q}: only plain function types")
+          }
+          let (np, q1) = leb_u32(b, q + 1)
+          for k in 0..<np {
+            if q1 + k >= body + size || !simple_type(b[q1 + k]) {
+              raise Failed("unsupported parameter type at \{q1 + k}")
+            }
+          }
+          let (nr, q2) = leb_u32(b, q1 + np)
+          for k in 0..<nr {
+            if q2 + k >= body + size || !simple_type(b[q2 + k]) {
+              raise Failed("unsupported result type at \{q2 + k}")
+            }
+          }
+          params.push(np)
+          q = q2 + nr
+        }
+      }
       3 => {
-        let (n, _) = leb_u32(b, body)
+        let (n, q) = leb_u32(b, body)
         s.functions += n
+        let mut q = q
+        for _ in 0..<n {
+          let (t, q1) = leb_u32(b, q)
+          func_params.push(if t < params.length() { params[t] } else { 0 })
+          q = q1
+        }
       }
       // Code: each body is size, then local declarations (count x (n, type)).
       10 => {
@@ -226,14 +271,16 @@ fn scan(b : Bytes) -> Scan raise SandboxError {
           }
           let (decls, d) = leb_u32(b, fbody)
           let mut d = d
-          let mut count = 0L
+          let index = s.locals_seen
+          s.locals_seen += 1
+          let mut count = if index < func_params.length() { func_params[index].to_int64() } else { 0L }
           for _ in 0..<decls {
             let (k, t) = leb_u32(b, d)
-            count += k.to_int64()
-            d = t + 1 // the value type byte
-            if d > fbody + fsize {
-              raise Failed("malformed module: local declarations run past the body")
+            if t >= fbody + fsize || !simple_type(b[t]) {
+              raise Failed("unsupported local type at \{t}")
             }
+            count += k.to_int64()
+            d = t + 1
           }
           if count > s.max_locals {
             s.max_locals = count
