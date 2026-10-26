@@ -2,12 +2,12 @@
 struct Options {
   wasm_path : String
   host_dir : String
-  threads : Int
+  threads : Int32
   entry : String
-  repeat : Int
-  warmup : Int
-  inner_repeat : Int
-  file_limit : Int
+  repeat : Int32
+  warmup : Int32
+  inner_repeat : Int32
+  file_limit : Int32
   use_cwasm : Bool
   inherit_stdio : Bool
 }
@@ -29,7 +29,7 @@ fn print_help() -> Unit {
 }
 
 ///|
-fn parse_int_or(value : String, fallback : Int) -> Int {
+fn parse_int_or(value : String, fallback : Int32) -> Int32 {
   @strconv.parse_int(value) catch {
     _ => fallback
   }
@@ -173,7 +173,7 @@ fn ensure_dist_dir() -> Result[String, Error] {
   match @env.current_dir() {
     Some(root) => {
       let dist = join_path(root, "dist")
-      if !(@fs.path_exists(dist)) {
+      if !@fs.path_exists(dist) {
         @fs.create_dir(dist) catch {
           err => return Err(err)
         }
@@ -198,7 +198,7 @@ fn collect_mbt_files(
   root : String,
   rel : String,
   out : Array[String],
-  limit : Int,
+  limit : Int32,
 ) -> Unit {
   if limit > 0 && out.length() >= limit {
     return
@@ -227,7 +227,7 @@ fn collect_mbt_files(
 }
 
 ///|
-fn build_worklist(host_dir : String, limit : Int) -> Result[Unit, Error] {
+fn build_worklist(host_dir : String, limit : Int32) -> Result[Unit, Error] {
   let files : Array[String] = []
   collect_mbt_files(host_dir, "", files, limit)
   if files.is_empty() {
@@ -246,8 +246,8 @@ fn spawn_all(
   rt : @thread_runtime.ThreadRuntime,
   payload : Bytes,
   entry : String,
-  threads : Int,
-  inner_repeat : Int,
+  threads : Int32,
+  inner_repeat : Int32,
   use_cwasm : Bool,
 ) -> Result[@thread_runtime.JoinSet, Error] {
   if threads <= 0 {
@@ -283,8 +283,8 @@ fn run_once(
   rt : @thread_runtime.ThreadRuntime,
   payload : Bytes,
   entry : String,
-  threads : Int,
-  inner_repeat : Int,
+  threads : Int32,
+  inner_repeat : Int32,
   use_cwasm : Bool,
 ) -> Result[UInt64, Error] {
   let start = @wasmtime.clock_now_ns()
@@ -305,10 +305,10 @@ fn run_repeat(
   rt : @thread_runtime.ThreadRuntime,
   payload : Bytes,
   entry : String,
-  threads : Int,
-  repeat : Int,
-  warmup : Int,
-  inner_repeat : Int,
+  threads : Int32,
+  repeat : Int32,
+  warmup : Int32,
+  inner_repeat : Int32,
   use_cwasm : Bool,
 ) -> Result[UInt64, Error] {
   if repeat <= 0 {
@@ -384,14 +384,14 @@ fn main {
   }
   match result {
     Ok(total_ns) => {
-      let batch_den = Int::to_uint64(options.repeat)
+      let batch_den = Int32::to_uint64(options.repeat)
       let batch_avg = total_ns / batch_den
       let inner = if options.inner_repeat <= 0 {
         1
       } else {
         options.inner_repeat
       }
-      let iter_den = Int::to_uint64(options.repeat * inner)
+      let iter_den = Int32::to_uint64(options.repeat * inner)
       let iter_avg = total_ns / iter_den
       println(
         "wasi io: avg_batch_ns=\{batch_avg} avg_iter_ns=\{iter_avg} threads=\{options.threads} repeat=\{options.repeat} inner_repeat=\{options.inner_repeat} warmup=\{options.warmup} cwasm=\{options.use_cwasm}",

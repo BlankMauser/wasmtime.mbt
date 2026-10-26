@@ -1,5 +1,5 @@
 import {
-  "mizchi/wasmtime" @wasmtime,
-  "moonbitlang/core/builtin" @builtin,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "mizchi/wasmtime",
+  "moonbitlang/core/builtin",
+  "moonbitlang/core/encoding/utf8",
 }

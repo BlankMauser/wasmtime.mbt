@@ -1,9 +1,10 @@
 import {
-  "mizchi/wasmtime" @wasmtime,
+  "mizchi/wasmtime",
 }
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   link: {
     "native": { "cc-link-flags": "-Ldeps/wasmtime/target/release -lwasmtime" },
   },

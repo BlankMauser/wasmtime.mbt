@@ -25,7 +25,7 @@ pub fn ptr_buffer_clear(ptr_buf : Bytes) -> Unit {
 ///|
 /// Delete a Wasmtime error pointer stored in bytes if not null.
 pub fn error_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
-  if !(ptr_is_null(ptr_buf)) {
+  if !ptr_is_null(ptr_buf) {
     error_delete_ptr(ptr_buf)
   }
 }
@@ -33,20 +33,20 @@ pub fn error_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
 ///|
 /// Delete a trap pointer stored in bytes if not null.
 pub fn trap_delete_ptr_buffer(ptr_buf : Bytes) -> Unit {
-  if !(ptr_is_null(ptr_buf)) {
+  if !ptr_is_null(ptr_buf) {
     trap_delete_ptr(ptr_buf)
   }
 }
 
 ///|
 /// Allocate a buffer for `n` wasmtime_val_t values.
-pub fn make_val_buffer(n : Int) -> Bytes {
+pub fn make_val_buffer(n : Int32) -> Bytes {
   Bytes::make(n * val_sizeof(), 0)
 }
 
 ///|
 /// Compute the number of values in a buffer.
-pub fn val_buffer_count(buf : Bytes) -> Int {
+pub fn val_buffer_count(buf : Bytes) -> Int32 {
   let size = val_sizeof()
   if size == 0 {
     0
@@ -57,7 +57,7 @@ pub fn val_buffer_count(buf : Bytes) -> Int {
 
 ///|
 /// Validate a val buffer and return the count or an error.
-pub fn val_buffer_count_result(buf : Bytes) -> Result[Int, Error] {
+pub fn val_buffer_count_result(buf : Bytes) -> Result[Int32, Error] {
   let size = val_sizeof()
   if size <= 0 {
     Err(@builtin.Failure::Failure("invalid val size"))
@@ -70,7 +70,7 @@ pub fn val_buffer_count_result(buf : Bytes) -> Result[Int, Error] {
 
 ///|
 /// Validate a val buffer and return the count or raise.
-pub fn val_buffer_count_or_raise(buf : Bytes) -> Int raise {
+pub fn val_buffer_count_or_raise(buf : Bytes) -> Int32 raise {
   let size = val_sizeof()
   if size <= 0 {
     fail("invalid val size")
@@ -101,54 +101,54 @@ pub fn make_stack_creator_buffer() -> Bytes {
 
 ///|
 /// Set i32 value at index in a val buffer.
-pub fn val_buffer_set_i32(buf : Bytes, index : Int, value : Int) -> Unit {
+pub fn val_buffer_set_i32(buf : Bytes, index : Int32, value : Int32) -> Unit {
   val_set_i32_at(buf, index, value)
 }
 
 ///|
 /// Set i64 value at index in a val buffer.
-pub fn val_buffer_set_i64(buf : Bytes, index : Int, value : Int64) -> Unit {
+pub fn val_buffer_set_i64(buf : Bytes, index : Int32, value : Int64) -> Unit {
   val_set_i64_at(buf, index, value)
 }
 
 ///|
 /// Set f32 value at index in a val buffer.
-pub fn val_buffer_set_f32(buf : Bytes, index : Int, value : Float) -> Unit {
+pub fn val_buffer_set_f32(buf : Bytes, index : Int32, value : Float) -> Unit {
   val_set_f32_at(buf, index, value)
 }
 
 ///|
 /// Set f64 value at index in a val buffer.
-pub fn val_buffer_set_f64(buf : Bytes, index : Int, value : Double) -> Unit {
+pub fn val_buffer_set_f64(buf : Bytes, index : Int32, value : Double) -> Unit {
   val_set_f64_at(buf, index, value)
 }
 
 ///|
 /// Get i32 value at index in a val buffer.
-pub fn val_buffer_get_i32(buf : Bytes, index : Int) -> Int {
+pub fn val_buffer_get_i32(buf : Bytes, index : Int32) -> Int32 {
   val_get_i32_at(buf, index)
 }
 
 ///|
 /// Get i64 value at index in a val buffer.
-pub fn val_buffer_get_i64(buf : Bytes, index : Int) -> Int64 {
+pub fn val_buffer_get_i64(buf : Bytes, index : Int32) -> Int64 {
   val_get_i64_at(buf, index)
 }
 
 ///|
 /// Get f32 value at index in a val buffer.
-pub fn val_buffer_get_f32(buf : Bytes, index : Int) -> Float {
+pub fn val_buffer_get_f32(buf : Bytes, index : Int32) -> Float {
   val_get_f32_at(buf, index)
 }
 
 ///|
 /// Get f64 value at index in a val buffer.
-pub fn val_buffer_get_f64(buf : Bytes, index : Int) -> Double {
+pub fn val_buffer_get_f64(buf : Bytes, index : Int32) -> Double {
   val_get_f64_at(buf, index)
 }
 
 ///|
 /// Unroot a value at index in a val buffer.
-pub fn val_buffer_unroot_at(buf : Bytes, index : Int) -> Unit {
+pub fn val_buffer_unroot_at(buf : Bytes, index : Int32) -> Unit {
   val_unroot_at(buf, index)
 }

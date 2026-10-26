@@ -60,7 +60,7 @@ pub type Trap
 
 ///|
 /// Strategy identifiers (see wasmtime_config_strategy_set).
-pub type Strategy = Int
+pub type Strategy = Int32
 
 ///|
 /// Auto-select compilation strategy.
@@ -72,7 +72,7 @@ pub const STRATEGY_CRANELIFT : Strategy = 1
 
 ///|
 /// Optimization level identifiers (see wasmtime_config_cranelift_opt_level_set).
-pub type OptLevel = Int
+pub type OptLevel = Int32
 
 ///|
 /// No optimizations.
@@ -88,7 +88,7 @@ pub const OPT_LEVEL_SPEED_AND_SIZE : OptLevel = 2
 
 ///|
 /// Profiling strategy identifiers (see wasmtime_config_profiler_set).
-pub type ProfilingStrategy = Int
+pub type ProfilingStrategy = Int32
 
 ///|
 /// No profiling.
@@ -108,7 +108,7 @@ pub const PROFILING_STRATEGY_PERFMAP : ProfilingStrategy = 3
 
 ///|
 /// WebAssembly value kind identifiers (see wasm_valtype_new).
-pub type ValKind = Int
+pub type ValKind = Int32
 
 ///|
 /// wasm i32 value kind.
@@ -490,9 +490,9 @@ pub extern "C" fn func_call_async_bytes(
   context : Context,
   func : Bytes,
   args : Bytes,
-  nargs : Int,
+  nargs : Int32,
   results : Bytes,
-  nresults : Int,
+  nresults : Int32,
   trap_out : Bytes,
   error_out : Bytes,
 ) -> CallFuture = "wasmtime_func_call_async_bytes"
@@ -503,9 +503,9 @@ pub extern "C" fn func_call_async_bytes(
 pub extern "C" fn linker_define_async_func_ptr(
   linker : Linker,
   module_bytes : Bytes,
-  module_len : Int,
+  module_len : Int32,
   name : Bytes,
-  name_len : Int,
+  name_len : Int32,
   ty : FuncType,
   cb_ptr : UInt64,
   data_ptr : UInt64,
@@ -549,7 +549,7 @@ pub extern "C" fn config_host_stack_creator_set_bytes(
 pub extern "C" fn config_target_set_bytes(
   config : Config,
   bytes : Bytes,
-  len : Int,
+  len : Int32,
 ) -> WasmtimeError = "wasmtime_config_target_set_bytes"
 
 ///|
@@ -558,7 +558,7 @@ pub extern "C" fn config_target_set_bytes(
 pub extern "C" fn config_cache_config_load_bytes(
   config : Config,
   bytes : Bytes,
-  len : Int,
+  len : Int32,
 ) -> WasmtimeError = "wasmtime_config_cache_config_load_bytes"
 
 ///|
@@ -567,7 +567,7 @@ pub extern "C" fn config_cache_config_load_bytes(
 pub extern "C" fn config_cranelift_flag_enable_bytes(
   config : Config,
   bytes : Bytes,
-  len : Int,
+  len : Int32,
 ) -> Unit = "wasmtime_config_cranelift_flag_enable_bytes"
 
 ///|
@@ -576,14 +576,14 @@ pub extern "C" fn config_cranelift_flag_enable_bytes(
 pub extern "C" fn config_cranelift_flag_set_bytes(
   config : Config,
   key : Bytes,
-  key_len : Int,
+  key_len : Int32,
   value : Bytes,
-  value_len : Int,
+  value_len : Int32,
 ) -> Unit = "wasmtime_config_cranelift_flag_set_bytes"
 
 ///|
 /// Size of a pointer in bytes.
-pub extern "C" fn ptr_sizeof() -> Int = "moonbit_ptr_sizeof"
+pub extern "C" fn ptr_sizeof() -> Int32 = "moonbit_ptr_sizeof"
 
 ///|
 /// Read a pointer value as UInt64 from bytes.
@@ -616,32 +616,32 @@ pub extern "C" fn trap_delete_ptr(bytes : Bytes) -> Unit = "wasm_trap_delete_ptr
 
 ///|
 /// Size of wasmtime_val_t in bytes.
-pub extern "C" fn val_sizeof() -> Int = "wasmtime_val_sizeof"
+pub extern "C" fn val_sizeof() -> Int32 = "wasmtime_val_sizeof"
 
 ///|
 /// Size of wasmtime_instance_t in bytes.
-pub extern "C" fn instance_sizeof() -> Int = "wasmtime_instance_sizeof"
+pub extern "C" fn instance_sizeof() -> Int32 = "wasmtime_instance_sizeof"
 
 ///|
 /// Size of wasmtime_func_t in bytes.
-pub extern "C" fn func_sizeof() -> Int = "wasmtime_func_sizeof"
+pub extern "C" fn func_sizeof() -> Int32 = "wasmtime_func_sizeof"
 
 ///|
 /// Size of wasmtime_stack_creator_t in bytes.
-pub extern "C" fn stack_creator_sizeof() -> Int = "wasmtime_stack_creator_sizeof"
+pub extern "C" fn stack_creator_sizeof() -> Int32 = "wasmtime_stack_creator_sizeof"
 
 ///|
 /// Read a wasmtime_val_t kind at index.
 #borrow(vals)
-pub extern "C" fn val_kind_at(vals : Bytes, index : Int) -> Int = "wasmtime_val_kind_at"
+pub extern "C" fn val_kind_at(vals : Bytes, index : Int32) -> Int32 = "wasmtime_val_kind_at"
 
 ///|
 /// Set an i32 value at index.
 #borrow(vals)
 pub extern "C" fn val_set_i32_at(
   vals : Bytes,
-  index : Int,
-  value : Int,
+  index : Int32,
+  value : Int32,
 ) -> Unit = "wasmtime_val_set_i32_at"
 
 ///|
@@ -649,7 +649,7 @@ pub extern "C" fn val_set_i32_at(
 #borrow(vals)
 pub extern "C" fn val_set_i64_at(
   vals : Bytes,
-  index : Int,
+  index : Int32,
   value : Int64,
 ) -> Unit = "wasmtime_val_set_i64_at"
 
@@ -658,7 +658,7 @@ pub extern "C" fn val_set_i64_at(
 #borrow(vals)
 pub extern "C" fn val_set_f32_at(
   vals : Bytes,
-  index : Int,
+  index : Int32,
   value : Float,
 ) -> Unit = "wasmtime_val_set_f32_at"
 
@@ -667,34 +667,34 @@ pub extern "C" fn val_set_f32_at(
 #borrow(vals)
 pub extern "C" fn val_set_f64_at(
   vals : Bytes,
-  index : Int,
+  index : Int32,
   value : Double,
 ) -> Unit = "wasmtime_val_set_f64_at"
 
 ///|
 /// Get an i32 value at index.
 #borrow(vals)
-pub extern "C" fn val_get_i32_at(vals : Bytes, index : Int) -> Int = "wasmtime_val_get_i32_at"
+pub extern "C" fn val_get_i32_at(vals : Bytes, index : Int32) -> Int32 = "wasmtime_val_get_i32_at"
 
 ///|
 /// Get an i64 value at index.
 #borrow(vals)
-pub extern "C" fn val_get_i64_at(vals : Bytes, index : Int) -> Int64 = "wasmtime_val_get_i64_at"
+pub extern "C" fn val_get_i64_at(vals : Bytes, index : Int32) -> Int64 = "wasmtime_val_get_i64_at"
 
 ///|
 /// Get an f32 value at index.
 #borrow(vals)
-pub extern "C" fn val_get_f32_at(vals : Bytes, index : Int) -> Float = "wasmtime_val_get_f32_at"
+pub extern "C" fn val_get_f32_at(vals : Bytes, index : Int32) -> Float = "wasmtime_val_get_f32_at"
 
 ///|
 /// Get an f64 value at index.
 #borrow(vals)
-pub extern "C" fn val_get_f64_at(vals : Bytes, index : Int) -> Double = "wasmtime_val_get_f64_at"
+pub extern "C" fn val_get_f64_at(vals : Bytes, index : Int32) -> Double = "wasmtime_val_get_f64_at"
 
 ///|
 /// Unroot a value at index (for externref/anyref).
 #borrow(vals)
-pub extern "C" fn val_unroot_at(vals : Bytes, index : Int) -> Unit = "wasmtime_val_unroot_at"
+pub extern "C" fn val_unroot_at(vals : Bytes, index : Int32) -> Unit = "wasmtime_val_unroot_at"
 
 ///|
 /// Create a host function using raw callback pointers and write into bytes.
@@ -713,9 +713,9 @@ pub extern "C" fn func_new_ptr_bytes(
 #borrow(params, results)
 pub extern "C" fn functype_new_from_kinds(
   params : Bytes,
-  nparams : Int,
+  nparams : Int32,
   results : Bytes,
-  nresults : Int,
+  nresults : Int32,
 ) -> FuncType = "wasmtime_functype_new_from_kinds"
 
 ///|

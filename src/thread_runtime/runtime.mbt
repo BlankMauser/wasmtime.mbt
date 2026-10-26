@@ -12,11 +12,11 @@ pub struct ThreadHandle {
 
 ///|
 /// WASI directory permission flags.
-pub type WasiDirPerms = Int
+pub type WasiDirPerms = Int32
 
 ///|
 /// WASI file permission flags.
-pub type WasiFilePerms = Int
+pub type WasiFilePerms = Int32
 
 ///|
 pub const WASI_DIR_PERMS_READ : WasiDirPerms = 1
@@ -48,11 +48,11 @@ extern "C" fn thread_runtime_delete_native(handle : UInt64) -> Unit = "wasmtime_
 extern "C" fn thread_runtime_spawn_wat_native(
   runtime : UInt64,
   wat : Bytes,
-  wat_len : Int,
+  wat_len : Int32,
   entry : Bytes,
-  entry_len : Int,
+  entry_len : Int32,
   args : Bytes,
-  args_len : Int,
+  args_len : Int32,
   error_out : Bytes,
 ) -> UInt64 = "wasmtime_thread_runtime_spawn_wat"
 
@@ -62,11 +62,11 @@ extern "C" fn thread_runtime_spawn_wat_native(
 extern "C" fn thread_runtime_spawn_wasm_native(
   runtime : UInt64,
   wasm : Bytes,
-  wasm_len : Int,
+  wasm_len : Int32,
   entry : Bytes,
-  entry_len : Int,
+  entry_len : Int32,
   args : Bytes,
-  args_len : Int,
+  args_len : Int32,
   error_out : Bytes,
 ) -> UInt64 = "wasmtime_thread_runtime_spawn_wasm"
 
@@ -75,7 +75,7 @@ extern "C" fn thread_runtime_spawn_wasm_native(
 extern "C" fn thread_runtime_precompile_cwasm_native(
   runtime : UInt64,
   wasm : Bytes,
-  wasm_len : Int,
+  wasm_len : Int32,
   error_out : Bytes,
 ) -> Bytes = "wasmtime_thread_runtime_precompile_cwasm"
 
@@ -84,11 +84,11 @@ extern "C" fn thread_runtime_precompile_cwasm_native(
 extern "C" fn thread_runtime_spawn_cwasm_native(
   runtime : UInt64,
   cwasm : Bytes,
-  cwasm_len : Int,
+  cwasm_len : Int32,
   entry : Bytes,
-  entry_len : Int,
+  entry_len : Int32,
   args : Bytes,
-  args_len : Int,
+  args_len : Int32,
   error_out : Bytes,
 ) -> UInt64 = "wasmtime_thread_runtime_spawn_cwasm"
 
@@ -97,12 +97,12 @@ extern "C" fn thread_runtime_spawn_cwasm_native(
 extern "C" fn thread_runtime_spawn_cwasm_repeat_native(
   runtime : UInt64,
   cwasm : Bytes,
-  cwasm_len : Int,
+  cwasm_len : Int32,
   entry : Bytes,
-  entry_len : Int,
+  entry_len : Int32,
   args : Bytes,
-  args_len : Int,
-  repeat : Int,
+  args_len : Int32,
+  repeat : Int32,
   error_out : Bytes,
 ) -> UInt64 = "wasmtime_thread_runtime_spawn_cwasm_repeat"
 
@@ -111,12 +111,12 @@ extern "C" fn thread_runtime_spawn_cwasm_repeat_native(
 extern "C" fn thread_runtime_spawn_wasm_repeat_native(
   runtime : UInt64,
   wasm : Bytes,
-  wasm_len : Int,
+  wasm_len : Int32,
   entry : Bytes,
-  entry_len : Int,
+  entry_len : Int32,
   args : Bytes,
-  args_len : Int,
-  repeat : Int,
+  args_len : Int32,
+  repeat : Int32,
   error_out : Bytes,
 ) -> UInt64 = "wasmtime_thread_runtime_spawn_wasm_repeat"
 
@@ -126,11 +126,11 @@ extern "C" fn thread_runtime_spawn_wasm_repeat_native(
 extern "C" fn thread_runtime_wasi_preopen_dir_native(
   runtime : UInt64,
   host_path : Bytes,
-  host_len : Int,
+  host_len : Int32,
   guest_path : Bytes,
-  guest_len : Int,
-  dir_perms : Int,
-  file_perms : Int,
+  guest_len : Int32,
+  dir_perms : Int32,
+  file_perms : Int32,
   error_out : Bytes,
 ) -> Bool = "wasmtime_thread_runtime_wasi_preopen_dir"
 
@@ -140,7 +140,7 @@ extern "C" fn thread_runtime_wasi_preopen_dir_native(
 extern "C" fn thread_runtime_wasi_set_argv_native(
   runtime : UInt64,
   argv_bytes : Bytes,
-  argv_len : Int,
+  argv_len : Int32,
   error_out : Bytes,
 ) -> Bool = "wasmtime_thread_runtime_wasi_set_argv_bytes"
 
@@ -191,7 +191,7 @@ extern "C" fn thread_runtime_mem_write_native(
   runtime : UInt64,
   offset : UInt64,
   src : Bytes,
-  len : Int,
+  len : Int32,
   error_out : Bytes,
 ) -> Bool = "wasmtime_thread_runtime_mem_write"
 
@@ -202,7 +202,7 @@ extern "C" fn thread_runtime_mem_read_native(
   runtime : UInt64,
   offset : UInt64,
   dst : Bytes,
-  len : Int,
+  len : Int32,
   error_out : Bytes,
 ) -> Bool = "wasmtime_thread_runtime_mem_read"
 
@@ -241,13 +241,16 @@ pub fn shared_pages_for_bytes(bytes : UInt64) -> UInt64 {
 
 ///|
 /// Create a runtime with wasm threads + shared memory enabled.
-pub fn thread_runtime_new(shared_pages : Int) -> Result[ThreadRuntime, Error] {
+pub fn thread_runtime_new(shared_pages : Int32) -> Result[ThreadRuntime, Error] {
   if shared_pages <= 0 {
     return Err(@builtin.Failure::Failure("shared_pages must be > 0"))
   }
   let err_ptr = @wasmtime.make_ptr_buffer()
-  let handle = thread_runtime_new_native(Int::to_uint64(shared_pages), err_ptr)
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  let handle = thread_runtime_new_native(
+    Int32::to_uint64(shared_pages),
+    err_ptr,
+  )
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_new failed"))
   } else {
     Ok(ThreadRuntime::{ handle, })
@@ -281,7 +284,7 @@ pub fn thread_runtime_spawn_wat(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -308,7 +311,7 @@ pub fn thread_runtime_spawn_wasm(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wasm failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -328,7 +331,7 @@ pub fn thread_runtime_precompile_cwasm(
     wasm.length(),
     err_ptr,
   )
-  if !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_precompile_cwasm failed"))
   } else {
     Ok(bytes)
@@ -355,7 +358,7 @@ pub fn thread_runtime_spawn_cwasm(
     args.length(),
     err_ptr,
   )
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_cwasm failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -369,7 +372,7 @@ pub fn thread_runtime_spawn_cwasm_repeat(
   cwasm : Bytes,
   entry : String,
   args : Bytes,
-  repeat : Int,
+  repeat : Int32,
 ) -> Result[ThreadHandle, Error] {
   if repeat <= 0 {
     return Err(@builtin.Failure::Failure("repeat must be > 0"))
@@ -387,7 +390,7 @@ pub fn thread_runtime_spawn_cwasm_repeat(
     repeat,
     err_ptr,
   )
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_cwasm_repeat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -401,7 +404,7 @@ pub fn thread_runtime_spawn_wasm_repeat(
   wasm : Bytes,
   entry : String,
   args : Bytes,
-  repeat : Int,
+  repeat : Int32,
 ) -> Result[ThreadHandle, Error] {
   if repeat <= 0 {
     return Err(@builtin.Failure::Failure("repeat must be > 0"))
@@ -419,7 +422,7 @@ pub fn thread_runtime_spawn_wasm_repeat(
     repeat,
     err_ptr,
   )
-  if handle == 0 || !(@wasmtime.ptr_buffer_is_null(err_ptr)) {
+  if handle == 0 || !@wasmtime.ptr_buffer_is_null(err_ptr) {
     Err(take_error_or(err_ptr, "thread_runtime_spawn_wasm_repeat failed"))
   } else {
     Ok(ThreadHandle::{ handle, })
@@ -448,9 +451,9 @@ fn encode_argv_bytes(args : Array[String]) -> Bytes {
 pub fn thread_runtime_wasi_preopen_dir(
   rt : ThreadRuntime,
   host_path : String,
-  guest_path? : String = ".",
-  dir_perms? : WasiDirPerms = WASI_DIR_PERMS_READ,
-  file_perms? : WasiFilePerms = WASI_FILE_PERMS_READ,
+  guest_path~ : String = ".",
+  dir_perms~ : WasiDirPerms = WASI_DIR_PERMS_READ,
+  file_perms~ : WasiFilePerms = WASI_FILE_PERMS_READ,
 ) -> Result[Unit, Error] {
   let err_ptr = @wasmtime.make_ptr_buffer()
   let host_bytes = @utf8.encode(host_path)
@@ -584,7 +587,7 @@ pub fn thread_runtime_mem_write(
 pub fn thread_runtime_mem_read(
   rt : ThreadRuntime,
   offset : UInt64,
-  len : Int,
+  len : Int32,
 ) -> Result[Bytes, Error] {
   if len < 0 {
     return Err(

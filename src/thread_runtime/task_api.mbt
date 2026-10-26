@@ -3,7 +3,7 @@
 pub type JoinHandle = ThreadHandle
 
 ///|
-pub fn ThreadRuntime::new(shared_pages : Int) -> Result[ThreadRuntime, Error] {
+pub fn ThreadRuntime::new(shared_pages : Int32) -> Result[ThreadRuntime, Error] {
   thread_runtime_new(shared_pages)
 }
 
@@ -38,7 +38,7 @@ pub fn ThreadRuntime::spawn_wasm_repeat(
   wasm : Bytes,
   entry : String,
   args : Bytes,
-  repeat : Int,
+  repeat : Int32,
 ) -> Result[JoinHandle, Error] {
   thread_runtime_spawn_wasm_repeat(self, wasm, entry, args, repeat)
 }
@@ -67,7 +67,7 @@ pub fn ThreadRuntime::spawn_cwasm_repeat(
   cwasm : Bytes,
   entry : String,
   args : Bytes,
-  repeat : Int,
+  repeat : Int32,
 ) -> Result[JoinHandle, Error] {
   thread_runtime_spawn_cwasm_repeat(self, cwasm, entry, args, repeat)
 }
@@ -76,9 +76,9 @@ pub fn ThreadRuntime::spawn_cwasm_repeat(
 pub fn ThreadRuntime::wasi_preopen_dir(
   self : ThreadRuntime,
   host_path : String,
-  guest_path? : String = ".",
-  dir_perms? : WasiDirPerms = WASI_DIR_PERMS_READ,
-  file_perms? : WasiFilePerms = WASI_FILE_PERMS_READ,
+  guest_path~ : String = ".",
+  dir_perms~ : WasiDirPerms = WASI_DIR_PERMS_READ,
+  file_perms~ : WasiFilePerms = WASI_FILE_PERMS_READ,
 ) -> Result[Unit, Error] {
   thread_runtime_wasi_preopen_dir(
     self,
@@ -115,7 +115,7 @@ pub fn ThreadRuntime::wasi_inherit_stdio(
 pub fn ThreadRuntime::mem_read(
   self : ThreadRuntime,
   offset : UInt64,
-  len : Int,
+  len : Int32,
 ) -> Result[Bytes, Error] {
   thread_runtime_mem_read(self, offset, len)
 }
@@ -152,11 +152,11 @@ pub struct JoinSet {
 
 ///|
 pub fn JoinSet::new() -> JoinSet {
-  { handles: [] }
+  { handles: [], }
 }
 
 ///|
-pub fn JoinSet::len(self : JoinSet) -> Int {
+pub fn JoinSet::len(self : JoinSet) -> Int32 {
   self.handles.length()
 }
 
