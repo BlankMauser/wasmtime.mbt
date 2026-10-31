@@ -294,12 +294,13 @@ static uint8_t *memory_range(lf_sandbox_t *s, const uint8_t *name, int32_t name_
   return p;
 }
 
-// Copies `len` bytes at `offset` of exported memory `memory` into `out`.
+// Copies `len` bytes at `offset` of exported memory `memory` into `out`
+// from index `out_at` (the caller checked that they fit).
 int32_t lf_sandbox_read(lf_sandbox_t *s, const uint8_t *name, int32_t name_len,
-                        int32_t offset, int32_t len, uint8_t *out) {
+                        int32_t offset, int32_t len, uint8_t *out, int32_t out_at) {
   int32_t status;
   uint8_t *p = memory_range(s, name, name_len, offset, len, &status);
-  if (p) memcpy(out, p, (size_t)len);
+  if (p) memcpy(out + out_at, p, (size_t)len);
   return status;
 }
 

@@ -72,6 +72,7 @@ extern "C" fn lf_sandbox_read(
   offset : Int,
   len : Int,
   out : FixedArray[Byte],
+  out_at : Int,
 ) -> Int = "lf_sandbox_read"
 
 ///|
@@ -445,8 +446,32 @@ pub fn Sandbox::read(self : Sandbox, memory : String, offset : Int, len : Int) -
   }
   let out = FixedArray::make(len, b'\x00')
   let n = @utf8.encode(memory)
-  match lf_sandbox_read(self.raw, n, n.length(), offset, len, out) {
+  match lf_sandbox_read(self.raw, n, n.length(), offset, len, out, 0) {
     0 => Bytes::makei(len, i => out[i])
+    6 => raise NoExport(memory)
+    _ => raise Failed("read of \{len} bytes at \{offset} is out of bounds")
+  }
+}
+
+///|
+/// `len` bytes at `offset` of exported memory `memory` into `out` from index
+/// `at` (bounds-checked on both sides): a host's reusable buffer, no
+/// allocation.
+pub fn Sandbox::read_into(
+  self : Sandbox,
+  memory : String,
+  offset : Int,
+  len : Int,
+  out : FixedArray[Byte],
+  at? : Int = 0,
+) -> Unit raise SandboxError {
+  self.alive()
+  if offset < 0 || len < 0 || at < 0 || at + len > out.length() {
+    raise Failed("read of \{len} bytes at \{offset} into \{out.length()} bytes at \{at} is out of bounds")
+  }
+  let n = @utf8.encode(memory)
+  match lf_sandbox_read(self.raw, n, n.length(), offset, len, out, at) {
+    0 => ()
     6 => raise NoExport(memory)
     _ => raise Failed("read of \{len} bytes at \{offset} is out of bounds")
   }

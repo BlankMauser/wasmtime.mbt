@@ -152,6 +152,17 @@ test "a write into the guest's memory is what the guest reads; out of bounds is 
   s.write("memory", 100, b"\x07\x2a")
   assert_eq(s.call("get", [101]), 42)
   assert_eq(s.read("memory", 100, 2), b"\x07\x2a")
+  let out = FixedArray::make(4, b'\xff')
+  s.read_into("memory", 100, 2, out, at=1)
+  assert_eq(Bytes::from_array(out), b"\xff\x07\x2a\xff")
+  let past = try {
+    s.read_into("memory", 100, 2, out, at=3)
+    "read"
+  } catch {
+    Failed(m) => m
+    _ => "other"
+  }
+  assert_eq(past, "read of 2 bytes at 100 into 4 bytes at 3 is out of bounds")
   // The last byte of the 64 KiB page, then one past it.
   s.write("memory", 65535, b"\x09")
   assert_eq(s.call("get", [65535]), 9)
