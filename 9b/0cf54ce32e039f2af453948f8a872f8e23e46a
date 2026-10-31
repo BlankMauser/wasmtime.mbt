@@ -1,0 +1,18 @@
+src/sandbox/sandbox.mbt
+  h_03360edcd9e88f 77-87,455-467
+src/sandbox/sandbox_stub.c
+  h_03360edcd9e88f 269-275,279-280,284-285,288,290-291,294-311
+src/sandbox/sandbox_test.mbt
+  h_03360edcd9e88f 144-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b0cf54ce32e039f2af453948f8a872f8e23e46a",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}
