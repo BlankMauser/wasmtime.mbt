@@ -141,3 +141,59 @@ test "parameters count as locals" {
   }
   assert_true(m.contains("declares 1001 locals"), msg=m)
 }
+
+///|
+test "a write into the guest's memory is what the guest reads; out of bounds is refused" {
+  // (module (memory (export "memory") 1)
+  //   (func (export "get") (param i32) (result i32) local.get 0 i32.load8_u))
+  let wasm = b"\x00\x61\x73\x6d\x01\x00\x00\x00\x01\x06\x01\x60\x01\x7f\x01\x7f\x03\x02\x01\x00\x05\x03\x01\x00\x01\x07\x10\x02\x06\x6d\x65\x6d\x6f\x72\x79\x02\x00\x03\x67\x65\x74\x00\x00\x0a\x09\x01\x07\x00\x20\x00\x2d\x00\x00\x0b"
+  let s = @sandbox.Sandbox::new(@sandbox.Module::compile(wasm))
+  s.session()
+  s.write("memory", 100, b"\x07\x2a")
+  assert_eq(s.call("get", [101]), 42)
+  assert_eq(s.read("memory", 100, 2), b"\x07\x2a")
+  let out = FixedArray::make(4, b'\xff')
+  s.read_into("memory", 100, 2, out, at=1)
+  assert_eq(Bytes::from_array(out), b"\xff\x07\x2a\xff")
+  let past = try {
+    s.read_into("memory", 100, 2, out, at=3)
+    "read"
+  } catch {
+    Failed(m) => m
+    _ => "other"
+  }
+  assert_eq(past, "read of 2 bytes at 100 into 4 bytes at 3 is out of bounds")
+  // A length or index near 2^31: `at + len` would wrap negative and pass a
+  // naive check (then the copy overruns `out`).
+  let refused_read = fn(len : Int, at : Int) -> String {
+    try {
+      s.read_into("memory", 0, len, out, at~)
+      "read"
+    } catch {
+      Failed(m) => m
+      _ => "other"
+    }
+  }
+  assert_eq(refused_read(0x7fffffff, 4), "read of 2147483647 bytes at 0 into 4 bytes at 4 is out of bounds")
+  assert_eq(refused_read(2, 0x7fffffff), "read of 2 bytes at 0 into 4 bytes at 2147483647 is out of bounds")
+  assert_eq(refused_read(0x7ffffffe, 2), "read of 2147483646 bytes at 0 into 4 bytes at 2 is out of bounds")
+  // The last byte of the 64 KiB page, then one past it.
+  s.write("memory", 65535, b"\x09")
+  assert_eq(s.call("get", [65535]), 9)
+  let refused = fn(memory : String, offset : Int, data : Bytes) -> String {
+    try {
+      s.write(memory, offset, data)
+      "written"
+    } catch {
+      Failed(m) => m
+      NoExport(n) => "no export \{n}"
+      _ => "other"
+    }
+  }
+  assert_eq(refused("memory", 65535, b"\x01\x02"), "write of 2 bytes at 65535 is out of bounds")
+  assert_eq(refused("memory", -1, b"\x01"), "write of 1 bytes at -1 is out of bounds")
+  assert_eq(refused("nope", 0, b"\x01"), "no export nope")
+  // An offset near 2^31: offset + length past Int's range is refused.
+  assert_eq(refused("memory", 0x7fffffff, b"\x01\x02"), "write of 2 bytes at 2147483647 is out of bounds")
+  s.free()
+}

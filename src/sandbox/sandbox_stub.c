@@ -266,26 +266,51 @@ int32_t lf_sandbox_call_i32(lf_sandbox_t *s, const uint8_t *name, int32_t name_l
   return LF_OK;
 }
 
-// Copies `len` bytes at `offset` of exported memory `memory` into `out`.
-// Bounds-checked against the memory's current size.
-int32_t lf_sandbox_read(lf_sandbox_t *s, const uint8_t *name, int32_t name_len,
-                        int32_t offset, int32_t len, uint8_t *out) {
-  if (name_len < 0 || offset < 0 || len < 0) return LF_ERROR;
+// Exported memory `name`'s bytes `offset..offset+len`, or NULL with *status
+// LF_NO_EXPORT (no such memory) or LF_ERROR (out of bounds). Bounds-checked
+// against the memory's current size; valid until the guest runs again.
+static uint8_t *memory_range(lf_sandbox_t *s, const uint8_t *name, int32_t name_len,
+                             int32_t offset, int32_t len, int32_t *status) {
+  *status = LF_ERROR;
+  if (name_len < 0 || offset < 0 || len < 0) return NULL;
   wasmtime_extern_t item;
   if (!wasmtime_instance_export_get(s->context, &s->instance, (const char *)name,
                                     (size_t)name_len, &item)) {
-    return LF_NO_EXPORT;
+    *status = LF_NO_EXPORT;
+    return NULL;
   }
   if (item.kind != WASMTIME_EXTERN_MEMORY) {
     wasmtime_extern_delete(&item);
-    return LF_NO_EXPORT;
+    *status = LF_NO_EXPORT;
+    return NULL;
   }
   size_t size = wasmtime_memory_data_size(s->context, &item.of.memory);
-  int32_t status = LF_ERROR;
-  if ((size_t)offset + (size_t)len <= size) {
-    memcpy(out, wasmtime_memory_data(s->context, &item.of.memory) + offset, (size_t)len);
-    status = LF_OK;
+  uint8_t *p = NULL;
+  // Two non-negative int32s cannot wrap a size_t sum, but compare against
+  // the room left anyway, so the check does not depend on that.
+  if ((size_t)len <= size && (size_t)offset <= size - (size_t)len) {
+    p = wasmtime_memory_data(s->context, &item.of.memory) + offset;
+    *status = LF_OK;
   }
   wasmtime_extern_delete(&item);
+  return p;
+}
+
+// Copies `len` bytes at `offset` of exported memory `memory` into `out`
+// from index `out_at` (the caller checked that they fit).
+int32_t lf_sandbox_read(lf_sandbox_t *s, const uint8_t *name, int32_t name_len,
+                        int32_t offset, int32_t len, uint8_t *out, int32_t out_at) {
+  int32_t status;
+  uint8_t *p = memory_range(s, name, name_len, offset, len, &status);
+  if (p) memcpy(out + out_at, p, (size_t)len);
+  return status;
+}
+
+// Copies `len` bytes of `data` to `offset` of exported memory `memory`.
+int32_t lf_sandbox_write(lf_sandbox_t *s, const uint8_t *name, int32_t name_len,
+                         int32_t offset, const uint8_t *data, int32_t len) {
+  int32_t status;
+  uint8_t *p = memory_range(s, name, name_len, offset, len, &status);
+  if (p) memcpy(p, data, (size_t)len);
   return status;
 }
