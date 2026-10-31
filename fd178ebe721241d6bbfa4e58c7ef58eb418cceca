@@ -1,0 +1,14 @@
+build.js
+  h_03360edcd9e88f 10-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd178ebe721241d6bbfa4e58c7ef58eb418cceca",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}

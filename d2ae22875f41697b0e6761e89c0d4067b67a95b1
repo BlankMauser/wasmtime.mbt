@@ -1,0 +1,18 @@
+build.js
+  h_03360edcd9e88f 1-18
+moon.mod
+  h_03360edcd9e88f 25-26
+src/sandbox/moon.pkg
+  h_03360edcd9e88f 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2ae22875f41697b0e6761e89c0d4067b67a95b1",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}

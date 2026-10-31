@@ -1,0 +1,26 @@
+.gitignore
+  h_03360edcd9e88f 10
+scripts/fetch-wasmtime-c-api.sh
+  h_03360edcd9e88f 1-22
+src/moon.pkg
+  h_03360edcd9e88f 2-3,6-7,10,15-16
+src/sandbox/moon.pkg
+  h_03360edcd9e88f 1-25
+src/sandbox/sandbox.mbt
+  h_03360edcd9e88f 1-188
+src/sandbox/sandbox_stub.c
+  h_03360edcd9e88f 1-210
+src/sandbox/sandbox_test.mbt
+  h_03360edcd9e88f 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d98667f86d906fa3f131f41c12c0c58abac59684",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}

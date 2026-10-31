@@ -1,0 +1,20 @@
+build.js
+  h_03360edcd9e88f 14-17
+src/sandbox/sandbox.mbt
+  h_03360edcd9e88f 2-12,20-29,31,36,88-104,109-110,112-113,134-260,268,275-280,282,284,289,294,300-306,310-311,317-318,325,340-342
+src/sandbox/sandbox_stub.c
+  h_03360edcd9e88f 4-7,10-13,15-20,23,41,43-46,51,53-58,69,75-84,89-92,96,102-106,130-132,135-144,147-178,188-190,193,198,210-211,217,228-229,234,237-241,251,254-255,261-264,273,276-280,284-290
+src/sandbox/sandbox_test.mbt
+  h_03360edcd9e88f 5,10-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea8dad1cf9096938d5d2becabd1c812c6ce4b6b7",
+  "prompts": {},
+  "humans": {
+    "h_03360edcd9e88f": {
+      "author": "BlankMauser <thomasluvan@gmail.com>"
+    }
+  }
+}
