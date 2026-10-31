@@ -163,6 +163,20 @@ test "a write into the guest's memory is what the guest reads; out of bounds is 
     _ => "other"
   }
   assert_eq(past, "read of 2 bytes at 100 into 4 bytes at 3 is out of bounds")
+  // A length or index near 2^31: `at + len` would wrap negative and pass a
+  // naive check (then the copy overruns `out`).
+  let refused_read = fn(len : Int, at : Int) -> String {
+    try {
+      s.read_into("memory", 0, len, out, at~)
+      "read"
+    } catch {
+      Failed(m) => m
+      _ => "other"
+    }
+  }
+  assert_eq(refused_read(0x7fffffff, 4), "read of 2147483647 bytes at 0 into 4 bytes at 4 is out of bounds")
+  assert_eq(refused_read(2, 0x7fffffff), "read of 2 bytes at 0 into 4 bytes at 2147483647 is out of bounds")
+  assert_eq(refused_read(0x7ffffffe, 2), "read of 2147483646 bytes at 0 into 4 bytes at 2 is out of bounds")
   // The last byte of the 64 KiB page, then one past it.
   s.write("memory", 65535, b"\x09")
   assert_eq(s.call("get", [65535]), 9)
@@ -179,5 +193,7 @@ test "a write into the guest's memory is what the guest reads; out of bounds is 
   assert_eq(refused("memory", 65535, b"\x01\x02"), "write of 2 bytes at 65535 is out of bounds")
   assert_eq(refused("memory", -1, b"\x01"), "write of 1 bytes at -1 is out of bounds")
   assert_eq(refused("nope", 0, b"\x01"), "no export nope")
+  // An offset near 2^31: offset + length past Int's range is refused.
+  assert_eq(refused("memory", 0x7fffffff, b"\x01\x02"), "write of 2 bytes at 2147483647 is out of bounds")
   s.free()
 }

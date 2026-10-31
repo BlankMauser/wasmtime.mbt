@@ -466,7 +466,9 @@ pub fn Sandbox::read_into(
   at? : Int = 0,
 ) -> Unit raise SandboxError {
   self.alive()
-  if offset < 0 || len < 0 || at < 0 || at + len > out.length() {
+  // `at + len` could wrap past Int's range (a guest-supplied len near 2^31):
+  // compare against the room left instead.
+  if offset < 0 || len < 0 || at < 0 || len > out.length() - at {
     raise Failed("read of \{len} bytes at \{offset} into \{out.length()} bytes at \{at} is out of bounds")
   }
   let n = @utf8.encode(memory)

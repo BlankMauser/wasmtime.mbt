@@ -286,7 +286,9 @@ static uint8_t *memory_range(lf_sandbox_t *s, const uint8_t *name, int32_t name_
   }
   size_t size = wasmtime_memory_data_size(s->context, &item.of.memory);
   uint8_t *p = NULL;
-  if ((size_t)offset + (size_t)len <= size) {
+  // Two non-negative int32s cannot wrap a size_t sum, but compare against
+  // the room left anyway, so the check does not depend on that.
+  if ((size_t)len <= size && (size_t)offset <= size - (size_t)len) {
     p = wasmtime_memory_data(s->context, &item.of.memory) + offset;
     *status = LF_OK;
   }
